@@ -29,9 +29,13 @@ function drawGrid(
       if (cursor && cursor.row === row && cursor.col === col) {
         process.stdout.write(ansiEscapes.cursorTo(col, row));
         process.stdout.write('┼');
-      } else if (mapState.has(key)) {
-        process.stdout.write(ansiEscapes.cursorTo(col, row));
-        process.stdout.write('█');
+      } else {
+        const pixel = mapState.get(key);
+        if (pixel) {
+          const { r, g, b } = pixel.color;
+          process.stdout.write(ansiEscapes.cursorTo(col, row));
+          process.stdout.write(`\u001b[38;2;${r};${g};${b}m█\u001b[0m`);
+        }
       }
     }
   }
@@ -39,7 +43,9 @@ function drawGrid(
   // Write diagnostic info on the bottom line
   process.stdout.write(ansiEscapes.cursorTo(0, rows - 1));
   if (username && cursor) {
-    const diagnostics = `User: ${username} | Cursor: (${cursor.row}, ${cursor.col})`;
+    const { r, g, b } = cursor.color;
+    const colorSwatch = `\u001b[48;2;${r};${g};${b}m  \u001b[0m`;
+    const diagnostics = `User: ${username} | Cursor: (${cursor.row}, ${cursor.col}) | Color: ${colorSwatch} (r:${r} ,g:${g}, b:${b})`;
     process.stdout.write(diagnostics);
   }
 }

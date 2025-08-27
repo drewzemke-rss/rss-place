@@ -1,10 +1,15 @@
 export interface CursorState {
   row: number;
   col: number;
+  color: {
+    r: number;
+    g: number;
+    b: number;
+  };
 }
 
 export function createCursorState(): CursorState {
-  return { row: 0, col: 0 };
+  return { row: 0, col: 0, color: { r: 255, g: 255, b: 255 } };
 }
 
 export function moveCursor(
@@ -27,6 +32,37 @@ export function moveCursor(
       break;
     case 'right':
       cursor.col = Math.min(terminalSize.cols - 1, cursor.col + 1);
+      break;
+  }
+}
+
+export function cycleColor(
+  cursor: CursorState,
+  component: 'r' | 'g' | 'b',
+  increment: number,
+): void {
+  const currentValue = cursor.color[component];
+  const newValue = (currentValue + increment) % 256;
+  cursor.color[component] = newValue < 0 ? newValue + 256 : newValue;
+}
+
+export function setColorPreset(
+  cursor: CursorState,
+  preset: 'white' | 'black' | 'random',
+): void {
+  switch (preset) {
+    case 'white':
+      cursor.color = { r: 255, g: 255, b: 255 };
+      break;
+    case 'black':
+      cursor.color = { r: 0, g: 0, b: 0 };
+      break;
+    case 'random':
+      cursor.color = {
+        r: Math.floor(Math.random() * 256),
+        g: Math.floor(Math.random() * 256),
+        b: Math.floor(Math.random() * 256),
+      };
       break;
   }
 }

@@ -72,10 +72,13 @@ async function startLiveDrawing(): Promise<void> {
       },
       async (row: number, col: number) => {
         try {
-          await pixelWriter.drawPixel(username, row, col);
+          await pixelWriter.drawPixel(username, row, col, cursor.color);
         } catch (error) {
           logger.error(`Failed to draw pixel: ${error}`);
         }
+      },
+      () => {
+        drawGrid(state, cursor, username);
       },
     );
 
