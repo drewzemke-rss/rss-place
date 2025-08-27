@@ -31,13 +31,13 @@ This app allows users to place colored pixels on a shared grid, similar to Reddi
 
 ### Scripts
 
-- `pnpm draw <username> <row> <col>` - Places a white pixel at the specified coordinates
+- `pnpm write <username> <row> <col>` - Places a white pixel at the specified coordinates
 - `pnpm read` - Reads new messages from the topic and updates the local state
 
 ### Files
 
 - `src/schema.ts` - Zod schema for message validation
-- `src/draw.ts` - Script for writing pixel messages to the topic
+- `src/write.ts` - Script for writing pixel messages to the topic
 - `src/read.ts` - Script for reading messages and maintaining state
 - `src/mapState.ts` - State management utilities
 - `state.json` - Persistent grid state storage
@@ -67,7 +67,7 @@ The general plan is to build this into a full r/place experience:
 
 ```bash
 # Place a pixel
-pnpm draw alice 10 15
+pnpm write alice 10 15
 
 # Update local state with new messages
 pnpm read
