@@ -1,0 +1,4 @@
+node_modules
+.jj
+.env
+state.json

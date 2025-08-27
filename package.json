@@ -1,0 +1,25 @@
+{
+	"name": "rss-place",
+	"version": "1.0.0",
+	"main": "index.js",
+	"scripts": {
+		"build": "tsc",
+		"draw": "tsx src/draw.ts",
+		"read": "tsx src/read.ts"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"dotenv": "^17.2.1",
+		"kafkajs": "^2.2.4",
+		"kafkajs-lz4": "2.0.0-beta.0",
+		"zod": "^4.1.3"
+	},
+	"devDependencies": {
+		"@types/node": "^24.3.0",
+		"tsx": "^4.20.5",
+		"typescript": "^5.9.2"
+	}
+}
