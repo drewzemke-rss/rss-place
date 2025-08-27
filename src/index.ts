@@ -10,6 +10,7 @@ import type { MapState } from './state';
 import { saveMapState } from './state';
 import { PixelWriter } from './write';
 
+// stfu kafka
 process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
 
 const argv = yargs(hideBin(process.argv))
@@ -39,7 +40,6 @@ const logger = createLogger({
 });
 
 async function startLiveDrawing(): Promise<void> {
-  // Clear log file if specified
   logger.clearLogFile();
   logger.log('Starting live drawing...');
 
@@ -49,6 +49,7 @@ async function startLiveDrawing(): Promise<void> {
   const pixelWriter = new PixelWriter(logger);
 
   try {
+    console.log('Connecting to Kafka...');
     const { consumer, state } = await createConsumer(
       username,
       (message: PlaceMessage, currentState: MapState) => {
@@ -63,7 +64,6 @@ async function startLiveDrawing(): Promise<void> {
       logger,
     );
 
-    // Setup keyboard input handling
     setupKeyboardInput(
       cursor,
       terminalSize,
@@ -88,17 +88,14 @@ async function startLiveDrawing(): Promise<void> {
 
     // Handle shutdown
     const shutdown = async (): Promise<void> => {
+      process.stdout.write('\nExiting, just a moment...\n');
       logger.log('Shutting down...');
       try {
-        // Cleanup keyboard input
         cleanupKeyboardInput();
 
-        // Disconnect pixel writer
         await pixelWriter.disconnect();
 
-        // Save current state before exit
         saveMapState(state, logger);
-        logger.log('State saved to file');
 
         await consumer.disconnect();
         logger.log('Consumer disconnected');

@@ -45,6 +45,7 @@ export function saveMapState(
   try {
     const obj = Object.fromEntries(state);
     writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2));
+    logger.log('State saved to file');
   } catch (error) {
     logger.error(`Failed to save state: ${error}`);
   }
