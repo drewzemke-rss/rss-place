@@ -1,11 +1,13 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { drawGrid } from './draw';
+import { drawGrid, getTerminalSize } from './draw';
 import { createConsumer } from './read';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
 import { saveMapState } from './state';
 import { createLogger } from './log';
+import { createCursorState } from './cursor';
+import { setupKeyboardInput, cleanupKeyboardInput } from './input';
 
 const argv = yargs(hideBin(process.argv))
   .option('logfile', {
@@ -33,6 +35,8 @@ async function startLiveDrawing(): Promise<void> {
   logger.log('Starting live drawing...');
 
   const username = process.argv[2] || 'live-viewer';
+  const cursor = createCursorState();
+  const terminalSize = getTerminalSize();
 
   try {
     const { consumer, state } = await createConsumer(
@@ -41,7 +45,7 @@ async function startLiveDrawing(): Promise<void> {
         logger.log(
           `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
         );
-        drawGrid(currentState);
+        drawGrid(currentState, cursor);
       },
       logger.error.bind(logger),
       logger.log.bind(logger),
@@ -49,14 +53,23 @@ async function startLiveDrawing(): Promise<void> {
       logger,
     );
 
+    // Setup keyboard input handling
+    setupKeyboardInput(cursor, terminalSize, () => {
+      drawGrid(state, cursor);
+    });
+
     // Initial draw
-    drawGrid(state);
+    drawGrid(state, cursor);
     logger.log('Initial state drawn, listening for updates...');
+    logger.log('Use arrow keys to move cursor, Ctrl+C to exit');
 
     // Handle shutdown
     const shutdown = async (): Promise<void> => {
       logger.log('Shutting down...');
       try {
+        // Cleanup keyboard input
+        cleanupKeyboardInput();
+
         // Save current state before exit
         saveMapState(state, logger);
         logger.log('State saved to file');
