@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { PlaceMessage } from './schema';
+import { defaultLogger, type Logger } from './log';
 
 const STATE_FILE = 'state.json';
 
@@ -17,9 +18,9 @@ export function keyToCoords(key: string): { row: number; col: number } {
   return { row, col };
 }
 
-export function loadMapState(): MapState {
+export function loadMapState(logger: Logger = defaultLogger): MapState {
   if (!existsSync(STATE_FILE)) {
-    console.log('No existing state file found, starting with empty map');
+    logger.log('No existing state file found, starting with empty map');
     return new Map();
   }
 
@@ -27,20 +28,20 @@ export function loadMapState(): MapState {
     const data = readFileSync(STATE_FILE, 'utf-8');
     const parsed = JSON.parse(data);
     const map = new Map(Object.entries(parsed));
-    console.log(`Loaded ${map.size} pixels from state file`);
+    logger.log(`Loaded ${map.size} pixels from state file`);
     return map as MapState;
   } catch (error) {
-    console.warn('Failed to load state file, starting with empty map:', error);
+    logger.error(`Failed to load state file, starting with empty map: ${error}`);
     return new Map();
   }
 }
 
-export function saveMapState(state: MapState): void {
+export function saveMapState(state: MapState, logger: Logger = defaultLogger): void {
   try {
     const obj = Object.fromEntries(state);
     writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2));
   } catch (error) {
-    console.error('Failed to save state:', error);
+    logger.error(`Failed to save state: ${error}`);
   }
 }
 

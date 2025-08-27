@@ -3,6 +3,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import 'dotenv/config';
 import type { PlaceMessage } from './schema';
+import { defaultLogger } from './log';
 
 const TOPIC = 'drew-place';
 
@@ -31,7 +32,7 @@ async function drawPixel(
 ): Promise<void> {
   try {
     await producer.connect();
-    console.log('Connected to Redpanda');
+    defaultLogger.log('Connected to Redpanda');
 
     const message: PlaceMessage = {
       user,
@@ -48,11 +49,11 @@ async function drawPixel(
       ],
     });
 
-    console.log(`Drew white pixel at (${row}, ${col}) for user: ${user}`);
+    defaultLogger.log(`Drew white pixel at (${row}, ${col}) for user: ${user}`);
 
     await producer.disconnect();
   } catch (error) {
-    console.error('Error drawing pixel:', error);
+    defaultLogger.error(`Error drawing pixel: ${error}`);
     process.exit(1);
   }
 }

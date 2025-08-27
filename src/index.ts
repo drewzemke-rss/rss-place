@@ -1,4 +1,3 @@
-import { appendFileSync, writeFileSync } from 'node:fs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { drawGrid } from './draw';
@@ -6,6 +5,7 @@ import { createConsumer } from './read';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
 import { saveMapState } from './state';
+import { createLogger } from './log';
 
 const argv = yargs(hideBin(process.argv))
   .option('logfile', {
@@ -15,29 +15,22 @@ const argv = yargs(hideBin(process.argv))
   .option('reset', {
     alias: 'r',
     type: 'boolean',
-    describe: 'Reset the state by reading from the topic from the very beginning',
+    describe:
+      'Reset the state by reading from the topic from the very beginning',
     default: false,
   })
   .help()
   .parseSync() as { logfile?: string; reset: boolean };
 
-function log(message: string): void {
-  if (argv.logfile) {
-    const timestamp = new Date().toISOString();
-    appendFileSync(argv.logfile, `[${timestamp}] ${message}\n`);
-  }
-}
-
-function logError(error: string): void {
-  log(`ERROR: ${error}`);
-}
+const logger = createLogger({
+  logFile: argv.logfile,
+  console: false, // Don't log to console since we're doing live drawing
+});
 
 async function startLiveDrawing(): Promise<void> {
   // Clear log file if specified
-  if (argv.logfile) {
-    writeFileSync(argv.logfile, '');
-  }
-  log('Starting live drawing...');
+  logger.clearLogFile();
+  logger.log('Starting live drawing...');
 
   const username = process.argv[2] || 'live-viewer';
 
@@ -45,32 +38,33 @@ async function startLiveDrawing(): Promise<void> {
     const { consumer, state } = await createConsumer(
       username,
       (message: PlaceMessage, currentState: MapState) => {
-        log(
+        logger.log(
           `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
         );
         drawGrid(currentState);
       },
-      logError,
-      log,
+      logger.error.bind(logger),
+      logger.log.bind(logger),
       argv.reset,
+      logger,
     );
 
     // Initial draw
     drawGrid(state);
-    log('Initial state drawn, listening for updates...');
+    logger.log('Initial state drawn, listening for updates...');
 
     // Handle shutdown
     const shutdown = async (): Promise<void> => {
-      log('Shutting down...');
+      logger.log('Shutting down...');
       try {
         // Save current state before exit
-        saveMapState(state);
-        log('State saved to file');
+        saveMapState(state, logger);
+        logger.log('State saved to file');
 
         await consumer.disconnect();
-        log('Consumer disconnected');
+        logger.log('Consumer disconnected');
       } catch (error) {
-        logError(`Error during shutdown: ${error}`);
+        logger.error(`Error during shutdown: ${error}`);
       }
       process.exit(0);
     };
@@ -78,7 +72,7 @@ async function startLiveDrawing(): Promise<void> {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {
-    logError(`Failed to start live drawing: ${error}`);
+    logger.error(`Failed to start live drawing: ${error}`);
     process.exit(1);
   }
 }
