@@ -1,15 +1,31 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { drawGrid } from './draw';
 import { createConsumer } from './read';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
 import { saveMapState } from './state';
 
-const LOG_FILE = 'live-draw.log';
+const argv = yargs(hideBin(process.argv))
+  .option('logfile', {
+    type: 'string',
+    describe: 'File to write logs to. If not provided, logs are not written',
+  })
+  .option('reset', {
+    alias: 'r',
+    type: 'boolean',
+    describe: 'Reset the state by reading from the topic from the very beginning',
+    default: false,
+  })
+  .help()
+  .parseSync() as { logfile?: string; reset: boolean };
 
 function log(message: string): void {
-  const timestamp = new Date().toISOString();
-  appendFileSync(LOG_FILE, `[${timestamp}] ${message}\n`);
+  if (argv.logfile) {
+    const timestamp = new Date().toISOString();
+    appendFileSync(argv.logfile, `[${timestamp}] ${message}\n`);
+  }
 }
 
 function logError(error: string): void {
@@ -17,8 +33,10 @@ function logError(error: string): void {
 }
 
 async function startLiveDrawing(): Promise<void> {
-  // Clear log file
-  writeFileSync(LOG_FILE, '');
+  // Clear log file if specified
+  if (argv.logfile) {
+    writeFileSync(argv.logfile, '');
+  }
   log('Starting live drawing...');
 
   const username = process.argv[2] || 'live-viewer';
@@ -34,6 +52,7 @@ async function startLiveDrawing(): Promise<void> {
       },
       logError,
       log,
+      argv.reset,
     );
 
     // Initial draw

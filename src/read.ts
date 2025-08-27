@@ -36,6 +36,7 @@ export async function createConsumer(
   onMessage: (message: PlaceMessage, state: MapState) => void,
   onError: (error: string) => void,
   logger: (message: string) => void = console.log,
+  fromBeginning: boolean = true,
 ): Promise<{ consumer: Consumer; state: MapState }> {
   const kafka = createKafkaClient();
   const groupId = `rss-place-${username}`;
@@ -46,7 +47,7 @@ export async function createConsumer(
   logger('Connected to Redpanda');
   logger(`Using consumer group: ${groupId}`);
 
-  await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+  await consumer.subscribe({ topic: TOPIC, fromBeginning });
   logger(`Subscribed to topic: ${TOPIC}`);
 
   await consumer.run({

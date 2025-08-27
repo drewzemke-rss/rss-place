@@ -32,14 +32,18 @@ This app allows users to place colored pixels on a shared grid, similar to Reddi
 ### Scripts
 
 - `pnpm write <username> <row> <col>` - Places a white pixel at the specified coordinates
-- `pnpm read` - Reads new messages from the topic and updates the local state
+- `pnpm read <username>` - Reads new messages from the topic and updates the local state
+- `pnpm draw` - Renders the current state to the terminal as white rectangles
+- `pnpm start [options]` - Live drawing interface that shows real-time pixel updates
 
 ### Files
 
 - `src/schema.ts` - Zod schema for message validation
 - `src/write.ts` - Script for writing pixel messages to the topic
 - `src/read.ts` - Script for reading messages and maintaining state
-- `src/mapState.ts` - State management utilities
+- `src/draw.ts` - Terminal rendering for visualizing the grid state
+- `src/index.ts` - Live drawing interface combining read and draw functionality
+- `src/state.ts` - State management utilities
 - `state.json` - Persistent grid state storage
 
 ### Features Implemented
@@ -50,6 +54,9 @@ This app allows users to place colored pixels on a shared grid, similar to Reddi
 ✅ Incremental message processing  
 ✅ Coordinate-based pixel overwriting  
 ✅ Error handling for invalid messages  
+✅ Terminal rendering with ANSI escape sequences  
+✅ Live drawing interface with real-time updates  
+✅ Command-line argument parsing with yargs  
 
 ## Next Steps
 
@@ -65,15 +72,54 @@ The general plan is to build this into a full r/place experience:
 
 ## Usage
 
+### Basic Commands
+
 ```bash
-# Place a pixel
+# Place a white pixel at coordinates (10, 15)
 pnpm write alice 10 15
 
-# Update local state with new messages
-pnpm read
+# Read new messages and update local state
+pnpm read alice
+
+# Render current state to terminal
+pnpm draw
+
+# Start live drawing interface
+pnpm start
 
 # Check current state
 cat state.json
+```
+
+### Live Drawing Options
+
+The `pnpm start` command supports optional arguments:
+
+```bash
+# Start with default settings (no logging, read from latest messages)
+pnpm start
+
+# Log activity to a file
+pnpm start --logfile live-draw.log
+
+# Reset state by reading from the very beginning of the topic
+pnpm start --reset
+
+# Combine options: log to file and reset state
+pnpm start --logfile debug.log --reset
+
+# Get help on available options
+pnpm start --help
+```
+
+### Command Help
+
+All commands support `--help` for usage information:
+
+```bash
+pnpm write --help
+pnpm read --help
+pnpm start --help
 ```
 
 ## Environment
