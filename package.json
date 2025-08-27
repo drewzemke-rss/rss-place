@@ -6,6 +6,7 @@
 		"build": "tsc",
 		"draw": "tsx src/draw.ts",
 		"read": "tsx src/read.ts",
+		"write": "tsx src/write.ts",
 		"lint": "biome check",
 		"lint:fix": "biome check --fix"
 	},
@@ -14,6 +15,7 @@
 	"license": "ISC",
 	"description": "",
 	"dependencies": {
+		"ansi-escapes": "^7.0.0",
 		"dotenv": "^17.2.1",
 		"kafkajs": "^2.2.4",
 		"kafkajs-lz4": "2.0.0-beta.0",
