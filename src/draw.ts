@@ -1,6 +1,6 @@
 import ansiEscapes from 'ansi-escapes';
-import { loadMapState, type MapState } from './state';
 import type { CursorState } from './cursor';
+import { loadMapState, type MapState } from './state';
 
 function getTerminalSize(): { rows: number; cols: number } {
   return {
@@ -14,6 +14,7 @@ function drawGrid(state?: MapState, cursor?: CursorState): void {
   const { rows, cols } = getTerminalSize();
 
   process.stdout.write(ansiEscapes.clearScreen);
+  process.stdout.write(ansiEscapes.cursorHide);
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {

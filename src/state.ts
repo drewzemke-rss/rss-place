@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import type { PlaceMessage } from './schema';
 import { defaultLogger, type Logger } from './log';
+import type { PlaceMessage } from './schema';
 
 const STATE_FILE = 'state.json';
 
@@ -31,12 +31,17 @@ export function loadMapState(logger: Logger = defaultLogger): MapState {
     logger.log(`Loaded ${map.size} pixels from state file`);
     return map as MapState;
   } catch (error) {
-    logger.error(`Failed to load state file, starting with empty map: ${error}`);
+    logger.error(
+      `Failed to load state file, starting with empty map: ${error}`,
+    );
     return new Map();
   }
 }
 
-export function saveMapState(state: MapState, logger: Logger = defaultLogger): void {
+export function saveMapState(
+  state: MapState,
+  logger: Logger = defaultLogger,
+): void {
   try {
     const obj = Object.fromEntries(state);
     writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2));

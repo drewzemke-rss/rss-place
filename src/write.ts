@@ -1,87 +1,125 @@
-import { Kafka } from 'kafkajs';
+import { Kafka, type Producer } from 'kafkajs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import 'dotenv/config';
+import { defaultLogger, type Logger } from './log';
 import type { PlaceMessage } from './schema';
-import { defaultLogger } from './log';
 
 const TOPIC = 'drew-place';
 
-const kafka = new Kafka({
-  clientId: 'rss-place-producer',
-  brokers: process.env.REDPANDA_BROKERS?.split(',') || ['localhost:9092'],
-  ssl: process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL',
-  sasl:
-    process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL'
-      ? {
-          mechanism: 'scram-sha-512',
-          username: process.env.REDPANDA_USER || '',
-          password: process.env.REDPANDA_PASS || '',
-        }
-      : undefined,
-  connectionTimeout: 10000,
-  requestTimeout: 30000,
-});
+function createKafkaClient(): Kafka {
+  return new Kafka({
+    clientId: 'rss-place-producer',
+    brokers: process.env.REDPANDA_BROKERS?.split(',') || ['localhost:9092'],
+    ssl: process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL',
+    sasl:
+      process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL'
+        ? {
+            mechanism: 'scram-sha-512',
+            username: process.env.REDPANDA_USER || '',
+            password: process.env.REDPANDA_PASS || '',
+          }
+        : undefined,
+    connectionTimeout: 10000,
+    requestTimeout: 30000,
+  });
+}
 
-const producer = kafka.producer();
+export class PixelWriter {
+  private producer: Producer;
+  private isConnected = false;
+  private logger: Logger;
 
-async function drawPixel(
-  user: string,
-  row: number,
-  col: number,
-): Promise<void> {
-  try {
-    await producer.connect();
-    defaultLogger.log('Connected to Redpanda');
+  constructor(logger: Logger = defaultLogger) {
+    const kafka = createKafkaClient();
+    this.producer = kafka.producer();
+    this.logger = logger;
+  }
 
-    const message: PlaceMessage = {
-      user,
-      color: { r: 255, g: 255, b: 255 },
-      loc: { row, col },
-    };
+  async connect(): Promise<void> {
+    if (!this.isConnected) {
+      await this.producer.connect();
+      this.isConnected = true;
+    }
+  }
 
-    await producer.send({
-      topic: TOPIC,
-      messages: [
-        {
-          value: JSON.stringify(message),
-        },
-      ],
-    });
+  async disconnect(): Promise<void> {
+    if (this.isConnected) {
+      await this.producer.disconnect();
+      this.isConnected = false;
+    }
+  }
 
-    defaultLogger.log(`Drew white pixel at (${row}, ${col}) for user: ${user}`);
+  async drawPixel(
+    user: string,
+    row: number,
+    col: number,
+    color: { r: number; g: number; b: number } = { r: 255, g: 255, b: 255 },
+  ): Promise<void> {
+    try {
+      await this.connect();
 
-    await producer.disconnect();
-  } catch (error) {
-    defaultLogger.error(`Error drawing pixel: ${error}`);
-    process.exit(1);
+      const message: PlaceMessage = {
+        user,
+        color,
+        loc: { row, col },
+      };
+
+      await this.producer.send({
+        topic: TOPIC,
+        messages: [{ value: JSON.stringify(message) }],
+      });
+
+      this.logger.log(
+        `Drew pixel at (${row}, ${col}) with color RGB(${color.r}, ${color.g}, ${color.b}) for user: ${user}`,
+      );
+    } catch (error) {
+      this.logger.error(`Error drawing pixel: ${error}`);
+      throw error;
+    }
   }
 }
 
-const argv = yargs(hideBin(process.argv))
-  .command(
-    '$0 <username> <row> <col>',
-    'Draw a white pixel at the specified location',
-    (yargs) => {
-      return yargs
-        .positional('username', {
-          describe: 'Username to use for the pixel',
-          type: 'string',
-          demandOption: true,
-        })
-        .positional('row', {
-          describe: 'Row coordinate for the pixel',
-          type: 'number',
-          demandOption: true,
-        })
-        .positional('col', {
-          describe: 'Column coordinate for the pixel',
-          type: 'number',
-          demandOption: true,
-        });
-    },
-  )
-  .help()
-  .parseSync() as unknown as { username: string; row: number; col: number };
+// CLI for testing
+if (require.main === module) {
+  async function drawPixel(
+    user: string,
+    row: number,
+    col: number,
+  ): Promise<void> {
+    const writer = new PixelWriter();
+    try {
+      await writer.drawPixel(user, row, col);
+    } finally {
+      await writer.disconnect();
+    }
+  }
 
-drawPixel(argv.username, argv.row, argv.col);
+  const argv = yargs(hideBin(process.argv))
+    .command(
+      '$0 <username> <row> <col>',
+      'Draw a white pixel at the specified location',
+      (yargs) => {
+        return yargs
+          .positional('username', {
+            describe: 'Username to use for the pixel',
+            type: 'string',
+            demandOption: true,
+          })
+          .positional('row', {
+            describe: 'Row coordinate for the pixel',
+            type: 'number',
+            demandOption: true,
+          })
+          .positional('col', {
+            describe: 'Column coordinate for the pixel',
+            type: 'number',
+            demandOption: true,
+          });
+      },
+    )
+    .help()
+    .parseSync() as unknown as { username: string; row: number; col: number };
+
+  drawPixel(argv.username, argv.row, argv.col);
+}

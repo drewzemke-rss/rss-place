@@ -2,6 +2,7 @@ import { type Consumer, Kafka, logLevel } from 'kafkajs';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import 'dotenv/config';
+import { defaultLogger, type Logger } from './log';
 import { type PlaceMessage, PlaceMessageSchema } from './schema';
 import {
   loadMapState,
@@ -9,7 +10,6 @@ import {
   saveMapState,
   updateMapState,
 } from './state';
-import { defaultLogger, type Logger } from './log';
 
 const TOPIC = 'drew-place';
 
@@ -37,19 +37,31 @@ export async function createConsumer(
   onMessage: (message: PlaceMessage, state: MapState) => void,
   onError: (error: string) => void,
   logger: (message: string) => void = defaultLogger.log.bind(defaultLogger),
-  fromBeginning: boolean = true,
+  reset: boolean = true,
   loggerInstance?: Logger,
 ): Promise<{ consumer: Consumer; state: MapState }> {
   const kafka = createKafkaClient();
-  const groupId = `rss-place-${username}`;
+  // Use a unique consumer group ID when resetting to avoid offset conflicts
+  const groupId = reset
+    ? `rss-place-${username}-reset-${Date.now()}`
+    : `rss-place-${username}`;
   const consumer = kafka.consumer({ groupId });
-  const state = loadMapState(loggerInstance);
+
+  // If fromBeginning is true (reset flag), start with empty state
+  // Otherwise, load existing state
+  const state = reset ? new Map() : loadMapState(loggerInstance);
+
+  if (reset && loggerInstance) {
+    loggerInstance.log(
+      `Reset flag enabled, starting with empty state and unique consumer group: ${groupId}`,
+    );
+  }
 
   await consumer.connect();
   logger('Connected to Redpanda');
   logger(`Using consumer group: ${groupId}`);
 
-  await consumer.subscribe({ topic: TOPIC, fromBeginning });
+  await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
   logger(`Subscribed to topic: ${TOPIC}`);
 
   await consumer.run({

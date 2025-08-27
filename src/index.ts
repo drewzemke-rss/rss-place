@@ -1,13 +1,14 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { createCursorState } from './cursor';
 import { drawGrid, getTerminalSize } from './draw';
+import { cleanupKeyboardInput, setupKeyboardInput } from './input';
+import { createLogger } from './log';
 import { createConsumer } from './read';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
 import { saveMapState } from './state';
-import { createLogger } from './log';
-import { createCursorState } from './cursor';
-import { setupKeyboardInput, cleanupKeyboardInput } from './input';
+import { PixelWriter } from './write';
 
 const argv = yargs(hideBin(process.argv))
   .option('logfile', {
@@ -37,6 +38,7 @@ async function startLiveDrawing(): Promise<void> {
   const username = process.argv[2] || 'live-viewer';
   const cursor = createCursorState();
   const terminalSize = getTerminalSize();
+  const pixelWriter = new PixelWriter(logger);
 
   try {
     const { consumer, state } = await createConsumer(
@@ -54,14 +56,27 @@ async function startLiveDrawing(): Promise<void> {
     );
 
     // Setup keyboard input handling
-    setupKeyboardInput(cursor, terminalSize, () => {
-      drawGrid(state, cursor);
-    });
+    setupKeyboardInput(
+      cursor,
+      terminalSize,
+      () => {
+        drawGrid(state, cursor);
+      },
+      async (row: number, col: number) => {
+        try {
+          await pixelWriter.drawPixel(username, row, col);
+        } catch (error) {
+          logger.error(`Failed to draw pixel: ${error}`);
+        }
+      },
+    );
 
     // Initial draw
     drawGrid(state, cursor);
     logger.log('Initial state drawn, listening for updates...');
-    logger.log('Use arrow keys to move cursor, Ctrl+C to exit');
+    logger.log(
+      'Use arrow keys to move cursor, Enter to draw pixel, Ctrl+C to exit',
+    );
 
     // Handle shutdown
     const shutdown = async (): Promise<void> => {
@@ -69,6 +84,9 @@ async function startLiveDrawing(): Promise<void> {
       try {
         // Cleanup keyboard input
         cleanupKeyboardInput();
+
+        // Disconnect pixel writer
+        await pixelWriter.disconnect();
 
         // Save current state before exit
         saveMapState(state, logger);

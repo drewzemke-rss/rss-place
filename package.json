@@ -8,8 +8,8 @@
     "draw": "tsx src/draw.ts",
     "read": "tsx src/read.ts",
     "write": "tsx src/write.ts",
-    "lint": "biome check",
-    "lint:fix": "biome check --fix"
+    "lint": "pnpm biome check",
+    "lint:fix": "pnpm biome check --fix"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +24,7 @@
     "zod": "^4.1.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.2",
+    "@biomejs/biome": "2.1.2",
     "@types/node": "^24.3.0",
     "@types/yargs": "^17.0.33",
     "tsx": "^4.20.5",
