@@ -10,6 +10,8 @@ import type { MapState } from './state';
 import { saveMapState } from './state';
 import { PixelWriter } from './write';
 
+process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
+
 const argv = yargs(hideBin(process.argv))
   .option('username', {
     alias: 'u',
@@ -53,7 +55,7 @@ async function startLiveDrawing(): Promise<void> {
         logger.log(
           `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
         );
-        drawGrid(currentState, cursor);
+        drawGrid(currentState, cursor, username);
       },
       logger.error.bind(logger),
       logger.log.bind(logger),
@@ -66,7 +68,7 @@ async function startLiveDrawing(): Promise<void> {
       cursor,
       terminalSize,
       () => {
-        drawGrid(state, cursor);
+        drawGrid(state, cursor, username);
       },
       async (row: number, col: number) => {
         try {
@@ -78,7 +80,7 @@ async function startLiveDrawing(): Promise<void> {
     );
 
     // Initial draw
-    drawGrid(state, cursor);
+    drawGrid(state, cursor, username);
     logger.log('Initial state drawn, listening for updates...');
     logger.log(
       'Use arrow keys to move cursor, Enter to draw pixel, Ctrl+C to exit',
