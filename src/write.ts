@@ -1,4 +1,6 @@
 import { Kafka } from 'kafkajs';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import 'dotenv/config';
 import type { PlaceMessage } from './schema';
 
@@ -55,19 +57,30 @@ async function drawPixel(
   }
 }
 
-const args = process.argv.slice(2);
-if (args.length !== 3) {
-  console.error('Usage: pnpm draw <username> <row> <col>');
-  process.exit(1);
-}
+const argv = yargs(hideBin(process.argv))
+  .command(
+    '$0 <username> <row> <col>',
+    'Draw a white pixel at the specified location',
+    (yargs) => {
+      return yargs
+        .positional('username', {
+          describe: 'Username to use for the pixel',
+          type: 'string',
+          demandOption: true,
+        })
+        .positional('row', {
+          describe: 'Row coordinate for the pixel',
+          type: 'number',
+          demandOption: true,
+        })
+        .positional('col', {
+          describe: 'Column coordinate for the pixel',
+          type: 'number',
+          demandOption: true,
+        });
+    },
+  )
+  .help()
+  .parseSync() as unknown as { username: string; row: number; col: number };
 
-const [user, rowStr, colStr] = args;
-const row = parseInt(rowStr, 10);
-const col = parseInt(colStr, 10);
-
-if (isNaN(row) || isNaN(col)) {
-  console.error('Row and column must be valid numbers');
-  process.exit(1);
-}
-
-drawPixel(user, row, col);
+drawPixel(argv.username, argv.row, argv.col);

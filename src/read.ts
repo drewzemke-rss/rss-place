@@ -1,4 +1,6 @@
 import { type Consumer, Kafka, logLevel } from 'kafkajs';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import 'dotenv/config';
 import { type PlaceMessage, PlaceMessageSchema } from './schema';
 import {
@@ -32,7 +34,7 @@ function createKafkaClient(): Kafka {
 export async function createConsumer(
   username: string,
   onMessage: (message: PlaceMessage, state: MapState) => void,
-  onError: (error: any) => void,
+  onError: (error: string) => void,
   logger: (message: string) => void = console.log,
 ): Promise<{ consumer: Consumer; state: MapState }> {
   const kafka = createKafkaClient();
@@ -48,7 +50,7 @@ export async function createConsumer(
   logger(`Subscribed to topic: ${TOPIC}`);
 
   await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
+    eachMessage: async ({ message }) => {
       if (message.value) {
         try {
           const rawMessage = message.value.toString();
@@ -57,7 +59,7 @@ export async function createConsumer(
 
           updateMapState(state, validMessage);
           onMessage(validMessage, state);
-        } catch (error) {
+        } catch {
           onError(`Invalid message: ${message.value?.toString()}`);
         }
       }
@@ -67,13 +69,20 @@ export async function createConsumer(
   return { consumer, state };
 }
 
-// Original CLI functionality
+// CLI for testing
 if (require.main === module) {
-  const username = process.argv[2];
-  if (!username) {
-    console.error('Usage: tsx src/read.ts <username>');
-    process.exit(1);
-  }
+  const argv = yargs(hideBin(process.argv))
+    .command('$0 <username>', 'Read messages from the place topic', (yargs) => {
+      return yargs.positional('username', {
+        describe: 'Username for the consumer group',
+        type: 'string',
+        demandOption: true,
+      });
+    })
+    .help()
+    .parseSync() as unknown as { username: string };
+
+  const username = argv.username;
 
   let messageCount = 0;
   let lastMessageTime = Date.now();

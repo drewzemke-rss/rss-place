@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { PlaceMessage } from './schema';
 
 const STATE_FILE = 'state.json';
@@ -28,7 +28,7 @@ export function loadMapState(): MapState {
     const parsed = JSON.parse(data);
     const map = new Map(Object.entries(parsed));
     console.log(`Loaded ${map.size} pixels from state file`);
-    return map;
+    return map as MapState;
   } catch (error) {
     console.warn('Failed to load state file, starting with empty map:', error);
     return new Map();
@@ -39,7 +39,6 @@ export function saveMapState(state: MapState): void {
   try {
     const obj = Object.fromEntries(state);
     writeFileSync(STATE_FILE, JSON.stringify(obj, null, 2));
-    console.log(`Saved ${state.size} pixels to state file`);
   } catch (error) {
     console.error('Failed to save state:', error);
   }

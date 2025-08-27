@@ -1,9 +1,9 @@
-import { appendFileSync, writeFileSync } from 'fs';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { drawGrid } from './draw';
 import { createConsumer } from './read';
-import { saveMapState } from './state';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
+import { saveMapState } from './state';
 
 const LOG_FILE = 'live-draw.log';
 
@@ -12,7 +12,7 @@ function log(message: string): void {
   appendFileSync(LOG_FILE, `[${timestamp}] ${message}\n`);
 }
 
-function logError(error: any): void {
+function logError(error: string): void {
   log(`ERROR: ${error}`);
 }
 
@@ -47,7 +47,7 @@ async function startLiveDrawing(): Promise<void> {
         // Save current state before exit
         saveMapState(state);
         log('State saved to file');
-        
+
         await consumer.disconnect();
         log('Consumer disconnected');
       } catch (error) {
