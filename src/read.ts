@@ -1,7 +1,7 @@
 import { Kafka } from "kafkajs";
 import "dotenv/config";
+import { loadMapState, saveMapState, updateMapState } from "./mapState";
 import { PlaceMessageSchema } from "./schema";
-import { loadMapState, saveMapState, updateMapState, MapState } from "./mapState";
 
 const TOPIC = "drew-place";
 
@@ -21,17 +21,23 @@ const kafka = new Kafka({
 	requestTimeout: 30000,
 });
 
-const consumer = kafka.consumer({
-	groupId: "rss-place-state-manager",
-});
+// Get username from command line arguments
+const username = process.argv[2];
+if (!username) {
+	console.error("Usage: tsx src/read.ts <username>");
+	process.exit(1);
+}
+
+const groupId = `rss-place-${username}`;
+const consumer = kafka.consumer({ groupId });
 
 async function readMessages(): Promise<void> {
 	try {
 		const mapState = loadMapState();
-		
+
 		await consumer.connect();
 		console.log("Connected to Redpanda");
-		console.log(`Using consumer group: rss-place-state-manager`);
+		console.log(`Using consumer group: ${groupId}`);
 
 		await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
 		console.log(`Subscribed to topic: ${TOPIC} (new messages only)`);
@@ -42,7 +48,7 @@ async function readMessages(): Promise<void> {
 		await consumer.run({
 			eachMessage: async ({ topic, partition, message }) => {
 				lastMessageTime = Date.now();
-				
+
 				if (message.value) {
 					try {
 						const rawMessage = message.value.toString();
@@ -52,10 +58,12 @@ async function readMessages(): Promise<void> {
 						updateMapState(mapState, validMessage);
 						messageCount++;
 						console.log(
-							`${validMessage.user} set (${validMessage.loc.row}, ${validMessage.loc.col}) to RGB(${validMessage.color.r}, ${validMessage.color.g}, ${validMessage.color.b})`
+							`${validMessage.user} set (${validMessage.loc.row}, ${validMessage.loc.col}) to RGB(${validMessage.color.r}, ${validMessage.color.g}, ${validMessage.color.b})`,
 						);
 					} catch (error) {
-						console.log(`Skipping invalid message: ${message.value.toString()}`);
+						console.log(
+							`Skipping invalid message: ${message.value.toString()}`,
+						);
 					}
 				}
 			},
@@ -72,7 +80,6 @@ async function readMessages(): Promise<void> {
 				shutdown();
 			}
 		}, 1000);
-
 	} catch (error) {
 		console.error("Error reading messages:", error);
 		process.exit(1);
