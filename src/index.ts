@@ -11,6 +11,12 @@ import { saveMapState } from './state';
 import { PixelWriter } from './write';
 
 const argv = yargs(hideBin(process.argv))
+  .option('username', {
+    alias: 'u',
+    type: 'string',
+    describe: 'Your username for the place canvas',
+    demandOption: true,
+  })
   .option('logfile', {
     type: 'string',
     describe: 'File to write logs to. If not provided, logs are not written',
@@ -23,7 +29,7 @@ const argv = yargs(hideBin(process.argv))
     default: false,
   })
   .help()
-  .parseSync() as { logfile?: string; reset: boolean };
+  .parseSync() as { username: string; logfile?: string; reset: boolean };
 
 const logger = createLogger({
   logFile: argv.logfile,
@@ -35,7 +41,7 @@ async function startLiveDrawing(): Promise<void> {
   logger.clearLogFile();
   logger.log('Starting live drawing...');
 
-  const username = process.argv[2] || 'live-viewer';
+  const username = argv.username;
   const cursor = createCursorState();
   const terminalSize = getTerminalSize();
   const pixelWriter = new PixelWriter(logger);
