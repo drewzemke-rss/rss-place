@@ -1,98 +1,129 @@
-import { Kafka } from "kafkajs";
-import "dotenv/config";
-import { loadMapState, saveMapState, updateMapState } from "./state";
-import { PlaceMessageSchema } from "./schema";
+import { type Consumer, Kafka, logLevel } from 'kafkajs';
+import 'dotenv/config';
+import { type PlaceMessage, PlaceMessageSchema } from './schema';
+import {
+  loadMapState,
+  type MapState,
+  saveMapState,
+  updateMapState,
+} from './state';
 
-const TOPIC = "drew-place";
+const TOPIC = 'drew-place';
 
-const kafka = new Kafka({
-	clientId: "rss-place-reader",
-	brokers: process.env.REDPANDA_BROKERS?.split(",") || ["localhost:9092"],
-	ssl: process.env.RP_SECURITY_PROTOCOL === "SASL_SSL",
-	sasl:
-		process.env.RP_SECURITY_PROTOCOL === "SASL_SSL"
-			? {
-					mechanism: "scram-sha-512",
-					username: process.env.REDPANDA_USER || "",
-					password: process.env.REDPANDA_PASS || "",
-				}
-			: undefined,
-	connectionTimeout: 10000,
-	requestTimeout: 30000,
-});
-
-// Get username from command line arguments
-const username = process.argv[2];
-if (!username) {
-	console.error("Usage: tsx src/read.ts <username>");
-	process.exit(1);
+function createKafkaClient(): Kafka {
+  return new Kafka({
+    clientId: 'rss-place-reader',
+    brokers: process.env.REDPANDA_BROKERS?.split(',') || ['localhost:9092'],
+    ssl: process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL',
+    sasl:
+      process.env.RP_SECURITY_PROTOCOL === 'SASL_SSL'
+        ? {
+            mechanism: 'scram-sha-512',
+            username: process.env.REDPANDA_USER || '',
+            password: process.env.REDPANDA_PASS || '',
+          }
+        : undefined,
+    connectionTimeout: 10000,
+    requestTimeout: 30000,
+    logLevel: logLevel.NOTHING,
+  });
 }
 
-const groupId = `rss-place-${username}`;
-const consumer = kafka.consumer({ groupId });
+export async function createConsumer(
+  username: string,
+  onMessage: (message: PlaceMessage, state: MapState) => void,
+  onError: (error: any) => void,
+  logger: (message: string) => void = console.log,
+): Promise<{ consumer: Consumer; state: MapState }> {
+  const kafka = createKafkaClient();
+  const groupId = `rss-place-${username}`;
+  const consumer = kafka.consumer({ groupId });
+  const state = loadMapState();
 
-async function readMessages(): Promise<void> {
-	try {
-		const mapState = loadMapState();
+  await consumer.connect();
+  logger('Connected to Redpanda');
+  logger(`Using consumer group: ${groupId}`);
 
-		await consumer.connect();
-		console.log("Connected to Redpanda");
-		console.log(`Using consumer group: ${groupId}`);
+  await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
+  logger(`Subscribed to topic: ${TOPIC}`);
 
-		await consumer.subscribe({ topic: TOPIC, fromBeginning: true });
-		console.log(`Subscribed to topic: ${TOPIC} (new messages only)`);
+  await consumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      if (message.value) {
+        try {
+          const rawMessage = message.value.toString();
+          const parsed = JSON.parse(rawMessage);
+          const validMessage = PlaceMessageSchema.parse(parsed);
 
-		let messageCount = 0;
-		let lastMessageTime = Date.now();
+          updateMapState(state, validMessage);
+          onMessage(validMessage, state);
+        } catch (error) {
+          onError(`Invalid message: ${message.value?.toString()}`);
+        }
+      }
+    },
+  });
 
-		await consumer.run({
-			eachMessage: async ({ topic, partition, message }) => {
-				lastMessageTime = Date.now();
-
-				if (message.value) {
-					try {
-						const rawMessage = message.value.toString();
-						const parsed = JSON.parse(rawMessage);
-						const validMessage = PlaceMessageSchema.parse(parsed);
-
-						updateMapState(mapState, validMessage);
-						messageCount++;
-						console.log(
-							`${validMessage.user} set (${validMessage.loc.row}, ${validMessage.loc.col}) to RGB(${validMessage.color.r}, ${validMessage.color.g}, ${validMessage.color.b})`,
-						);
-					} catch (error) {
-						console.log(
-							`Skipping invalid message: ${message.value.toString()}`,
-						);
-					}
-				}
-			},
-		});
-
-		// Check periodically if we should exit
-		const checkInterval = setInterval(() => {
-			if (Date.now() - lastMessageTime > 2000) {
-				console.log(`\nProcessed ${messageCount} new messages`);
-				if (messageCount > 0) {
-					saveMapState(mapState);
-				}
-				clearInterval(checkInterval);
-				shutdown();
-			}
-		}, 1000);
-	} catch (error) {
-		console.error("Error reading messages:", error);
-		process.exit(1);
-	}
+  return { consumer, state };
 }
 
-async function shutdown(): Promise<void> {
-	console.log("Shutting down...");
-	await consumer.disconnect();
-	process.exit(0);
+// Original CLI functionality
+if (require.main === module) {
+  const username = process.argv[2];
+  if (!username) {
+    console.error('Usage: tsx src/read.ts <username>');
+    process.exit(1);
+  }
+
+  let messageCount = 0;
+  let lastMessageTime = Date.now();
+  let consumer: Consumer;
+  let mapState: MapState;
+
+  async function readMessages(): Promise<void> {
+    try {
+      const result = await createConsumer(
+        username,
+        (message) => {
+          messageCount++;
+          lastMessageTime = Date.now();
+          console.log(
+            `${message.user} set (${message.loc.row}, ${message.loc.col}) to RGB(${message.color.r}, ${message.color.g}, ${message.color.b})`,
+          );
+        },
+        (error) => console.log(`Skipping ${error}`),
+      );
+
+      consumer = result.consumer;
+      mapState = result.state;
+
+      // Check periodically if we should exit
+      const checkInterval = setInterval(() => {
+        if (Date.now() - lastMessageTime > 2000) {
+          console.log(`\nProcessed ${messageCount} new messages`);
+          if (messageCount > 0) {
+            saveMapState(mapState);
+          }
+          clearInterval(checkInterval);
+          shutdown();
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error reading messages:', error);
+      process.exit(1);
+    }
+  }
+
+  async function shutdown(): Promise<void> {
+    console.log('Shutting down...');
+    if (consumer) {
+      await consumer.disconnect();
+    }
+    process.exit(0);
+  }
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+
+  readMessages();
 }
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
-readMessages();
