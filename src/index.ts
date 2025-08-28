@@ -1,11 +1,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import type { TerminalBuffer } from './buffer';
-import {
-  createCursorState,
-  createViewportState,
-  updateViewport,
-} from './cursor';
+import { createCursorState } from './cursor';
 import { drawGridBuffered, getTerminalSize } from './draw';
 import { cleanupKeyboardInput, setupKeyboardInput } from './input';
 import { createLogger } from './log';
@@ -13,6 +9,7 @@ import { createConsumer } from './read';
 import type { PlaceMessage } from './schema';
 import type { MapState } from './state';
 import { saveMapState } from './state';
+import { createViewportState, updateViewport } from './viewport';
 import { PixelWriter } from './write';
 
 // stfu kafka
@@ -59,55 +56,64 @@ async function startLiveDrawing(): Promise<void> {
 
   try {
     console.log('Connecting to Kafka...');
+
+    const onMessage = (message: PlaceMessage, currentState: MapState) => {
+      logger.log(
+        `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
+      );
+      currentBuffer = drawGridBuffered(
+        currentState,
+        cursor,
+        username,
+        currentBuffer,
+        viewport,
+      );
+    };
+
     const { consumer, state } = await createConsumer(
       username,
-      (message: PlaceMessage, currentState: MapState) => {
-        logger.log(
-          `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
-        );
-        currentBuffer = drawGridBuffered(
-          currentState,
-          cursor,
-          username,
-          currentBuffer,
-          viewport,
-        );
-      },
+      onMessage,
       logger.error.bind(logger),
       logger.log.bind(logger),
       argv.reset,
       logger,
     );
 
+    const onCursorMove = () => {
+      // Update viewport based on cursor position
+      updateViewport(viewport, cursor, terminalSize);
+      currentBuffer = drawGridBuffered(
+        state,
+        cursor,
+        username,
+        currentBuffer,
+        viewport,
+      );
+    };
+
+    const onDrawPixel = async (row: number, col: number) => {
+      try {
+        await pixelWriter.drawPixel(username, row, col, cursor.color);
+      } catch (error) {
+        logger.error(`Failed to draw pixel: ${error}`);
+      }
+    };
+
+    const onColorChange = () => {
+      currentBuffer = drawGridBuffered(
+        state,
+        cursor,
+        username,
+        currentBuffer,
+        viewport,
+      );
+    };
+
     setupKeyboardInput(
       cursor,
-      () => {
-        // Update viewport based on cursor position
-        updateViewport(viewport, cursor, terminalSize);
-        currentBuffer = drawGridBuffered(
-          state,
-          cursor,
-          username,
-          currentBuffer,
-          viewport,
-        );
-      },
-      async (row: number, col: number) => {
-        try {
-          await pixelWriter.drawPixel(username, row, col, cursor.color);
-        } catch (error) {
-          logger.error(`Failed to draw pixel: ${error}`);
-        }
-      },
-      () => {
-        currentBuffer = drawGridBuffered(
-          state,
-          cursor,
-          username,
-          currentBuffer,
-          viewport,
-        );
-      },
+      onCursorMove,
+      onDrawPixel,
+      onColorChange,
       () => state,
     );
 
