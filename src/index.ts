@@ -1,7 +1,8 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import type { TerminalBuffer } from './buffer';
 import { createCursorState } from './cursor';
-import { drawGrid, getTerminalSize } from './draw';
+import { drawGridBuffered, getTerminalSize } from './draw';
 import { cleanupKeyboardInput, setupKeyboardInput } from './input';
 import { createLogger } from './log';
 import { createConsumer } from './read';
@@ -48,6 +49,9 @@ async function startLiveDrawing(): Promise<void> {
   const terminalSize = getTerminalSize();
   const pixelWriter = new PixelWriter(logger);
 
+  // Buffer state for double buffering
+  let currentBuffer: TerminalBuffer | undefined;
+
   try {
     console.log('Connecting to Kafka...');
     const { consumer, state } = await createConsumer(
@@ -56,7 +60,12 @@ async function startLiveDrawing(): Promise<void> {
         logger.log(
           `${message.user} placed pixel at (${message.loc.row}, ${message.loc.col})`,
         );
-        drawGrid(currentState, cursor, username);
+        currentBuffer = drawGridBuffered(
+          currentState,
+          cursor,
+          username,
+          currentBuffer,
+        );
       },
       logger.error.bind(logger),
       logger.log.bind(logger),
@@ -68,7 +77,12 @@ async function startLiveDrawing(): Promise<void> {
       cursor,
       terminalSize,
       () => {
-        drawGrid(state, cursor, username);
+        currentBuffer = drawGridBuffered(
+          state,
+          cursor,
+          username,
+          currentBuffer,
+        );
       },
       async (row: number, col: number) => {
         try {
@@ -78,13 +92,18 @@ async function startLiveDrawing(): Promise<void> {
         }
       },
       () => {
-        drawGrid(state, cursor, username);
+        currentBuffer = drawGridBuffered(
+          state,
+          cursor,
+          username,
+          currentBuffer,
+        );
       },
       () => state,
     );
 
     // Initial draw
-    drawGrid(state, cursor, username);
+    currentBuffer = drawGridBuffered(state, cursor, username, currentBuffer);
     logger.log('Initial state drawn, listening for updates...');
 
     // Handle shutdown

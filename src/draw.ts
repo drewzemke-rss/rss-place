@@ -1,4 +1,11 @@
 import ansiEscapes from 'ansi-escapes';
+import {
+  buildBufferFromMapState,
+  findBufferDifferences,
+  renderBuffer,
+  renderBufferDifferences,
+  type TerminalBuffer,
+} from './buffer';
 import type { CursorState } from './cursor';
 import {
   type Color,
@@ -49,6 +56,46 @@ function renderCursorPixelPair(
     const topColor = topPixel?.color ?? BLACK;
     return buildColoredHalfBlock(topColor, WHITE);
   }
+}
+
+// New buffered drawing function
+export function drawGridBuffered(
+  mapState: MapState,
+  cursor: CursorState | undefined,
+  username: string | undefined,
+  previousBuffer: TerminalBuffer | undefined,
+): TerminalBuffer {
+  const terminalSize = getTerminalSize();
+  const currentBuffer = buildBufferFromMapState(mapState, cursor, terminalSize);
+
+  // If we have a previous buffer, only draw differences
+  if (previousBuffer) {
+    const differences = findBufferDifferences(currentBuffer, previousBuffer);
+    if (differences.length > 0) {
+      renderBufferDifferences(differences);
+    }
+  } else {
+    // First draw - render entire buffer
+    process.stdout.write(ansiEscapes.clearScreen);
+    renderBuffer(currentBuffer);
+  }
+
+  // Reset colors
+  process.stdout.write('\u001b[0m');
+
+  // Write diagnostic info on the bottom line
+  const { rows } = terminalSize;
+  process.stdout.write(ansiEscapes.cursorTo(0, rows - 1));
+  process.stdout.write(ansiEscapes.eraseEndLine);
+
+  if (username && cursor) {
+    const { r, g, b } = cursor.color;
+    const colorSwatch = `\u001b[48;2;${r};${g};${b}m  `;
+    const diagnostics = `User: ${username} | Cursor: (${cursor.row}, ${cursor.col}) | Color: ${colorSwatch}\u001b[0m (r:${r} ,g:${g}, b:${b})`;
+    process.stdout.write(diagnostics);
+  }
+
+  return currentBuffer;
 }
 
 function drawGrid(
