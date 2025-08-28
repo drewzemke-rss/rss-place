@@ -7,6 +7,9 @@ import type { PlaceMessage } from './schema';
 
 const TOPIC = 'drew-place';
 
+// stfu kafka
+process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
+
 function createKafkaClient(): Kafka {
   return new Kafka({
     clientId: 'rss-place-producer',
@@ -86,10 +89,13 @@ if (require.main === module) {
     user: string,
     row: number,
     col: number,
+    r: number,
+    g: number,
+    b: number,
   ): Promise<void> {
     const writer = new PixelWriter();
     try {
-      await writer.drawPixel(user, row, col);
+      await writer.drawPixel(user, row, col, { r, g, b });
     } finally {
       await writer.disconnect();
     }
@@ -97,8 +103,8 @@ if (require.main === module) {
 
   const argv = yargs(hideBin(process.argv))
     .command(
-      '$0 <username> <row> <col>',
-      'Draw a white pixel at the specified location',
+      '$0 <username> <row> <col> <red> <green> <blue>',
+      'Draw a colored pixel at the specified location',
       (yargs) => {
         return yargs
           .positional('username', {
@@ -115,11 +121,33 @@ if (require.main === module) {
             describe: 'Column coordinate for the pixel',
             type: 'number',
             demandOption: true,
+          })
+          .positional('red', {
+            describe: 'Red color value (0-255)',
+            type: 'number',
+            demandOption: true,
+          })
+          .positional('green', {
+            describe: 'Green color value (0-255)',
+            type: 'number',
+            demandOption: true,
+          })
+          .positional('blue', {
+            describe: 'Blue color value (0-255)',
+            type: 'number',
+            demandOption: true,
           });
       },
     )
     .help()
-    .parseSync() as unknown as { username: string; row: number; col: number };
+    .parseSync() as unknown as {
+    username: string;
+    row: number;
+    col: number;
+    red: number;
+    green: number;
+    blue: number;
+  };
 
-  drawPixel(argv.username, argv.row, argv.col);
+  drawPixel(argv.username, argv.row, argv.col, argv.red, argv.green, argv.blue);
 }

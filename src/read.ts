@@ -13,6 +13,9 @@ import {
 
 const TOPIC = 'drew-place';
 
+// stfu kafka
+process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
+
 function createKafkaClient(): Kafka {
   return new Kafka({
     clientId: 'rss-place-reader',
