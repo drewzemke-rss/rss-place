@@ -13,7 +13,6 @@ import type { MapState } from './state';
 
 export function setupKeyboardInput(
   cursor: CursorState,
-  terminalSize: { rows: number; cols: number },
   onCursorMove: () => void,
   onDrawPixel: (row: number, col: number) => void,
   onColorChange?: () => void,
@@ -31,16 +30,16 @@ export function setupKeyboardInput(
     }
 
     if (key === '\u001b[A' || key === 'k') {
-      moveCursor(cursor, 'up', terminalSize);
+      moveCursor(cursor, 'up');
       onCursorMove();
     } else if (key === '\u001b[B' || key === 'j') {
-      moveCursor(cursor, 'down', terminalSize);
+      moveCursor(cursor, 'down');
       onCursorMove();
     } else if (key === '\u001b[C' || key === 'l') {
-      moveCursor(cursor, 'right', terminalSize);
+      moveCursor(cursor, 'right');
       onCursorMove();
     } else if (key === '\u001b[D' || key === 'h') {
-      moveCursor(cursor, 'left', terminalSize);
+      moveCursor(cursor, 'left');
       onCursorMove();
     } else if (key === '\r' || key === ' ') {
       onDrawPixel(cursor.row, cursor.col);

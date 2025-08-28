@@ -64,9 +64,15 @@ export function drawGridBuffered(
   cursor: CursorState | undefined,
   username: string | undefined,
   previousBuffer: TerminalBuffer | undefined,
+  viewport?: { offsetRow: number; offsetCol: number },
 ): TerminalBuffer {
   const terminalSize = getTerminalSize();
-  const currentBuffer = buildBufferFromMapState(mapState, cursor, terminalSize);
+  const currentBuffer = buildBufferFromMapState(
+    mapState,
+    cursor,
+    terminalSize,
+    viewport,
+  );
 
   // If we have a previous buffer, only draw differences
   if (previousBuffer) {

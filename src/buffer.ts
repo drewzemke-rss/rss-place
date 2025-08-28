@@ -61,8 +61,10 @@ export function buildBufferFromMapState(
   mapState: MapState,
   cursor: CursorState | undefined,
   terminalSize: { rows: number; cols: number },
+  viewport?: { offsetRow: number; offsetCol: number },
 ): TerminalBuffer {
   const buffer = createTerminalBuffer(terminalSize.rows - 1, terminalSize.cols); // -1 for diagnostic line
+  const viewportOffset = viewport || { offsetRow: 0, offsetCol: 0 };
 
   // Fill buffer with pixel data
   for (let terminalRow = 0; terminalRow < buffer.length; terminalRow++) {
@@ -72,8 +74,13 @@ export function buildBufferFromMapState(
       terminalCol++
     ) {
       // Each terminal character represents two pixels vertically stacked
-      const topCoords = `${terminalRow * 2},${terminalCol}`;
-      const bottomCoords = `${terminalRow * 2 + 1},${terminalCol}`;
+      // Apply viewport offset to get canvas coordinates
+      const canvasTopRow = terminalRow * 2 + viewportOffset.offsetRow;
+      const canvasBottomRow = terminalRow * 2 + 1 + viewportOffset.offsetRow;
+      const canvasCol = terminalCol + viewportOffset.offsetCol;
+
+      const topCoords = `${canvasTopRow},${canvasCol}`;
+      const bottomCoords = `${canvasBottomRow},${canvasCol}`;
 
       const topPixel = mapState.get(topCoords);
       const bottomPixel = mapState.get(bottomCoords);
@@ -90,9 +97,13 @@ export function buildBufferFromMapState(
 
   // Overlay cursor if present
   if (cursor) {
-    const terminalRow = Math.floor(cursor.row / 2);
-    const terminalCol = cursor.col;
-    const isTopHalf = cursor.row % 2 === 0;
+    // Convert cursor canvas coordinates to viewport-relative coordinates
+    const viewportCursorRow = cursor.row - viewportOffset.offsetRow;
+    const viewportCursorCol = cursor.col - viewportOffset.offsetCol;
+
+    const terminalRow = Math.floor(viewportCursorRow / 2);
+    const terminalCol = viewportCursorCol;
+    const isTopHalf = viewportCursorRow % 2 === 0;
 
     // Make sure cursor is within buffer bounds
     if (

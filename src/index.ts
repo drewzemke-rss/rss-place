@@ -1,7 +1,11 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import type { TerminalBuffer } from './buffer';
-import { createCursorState } from './cursor';
+import {
+  createCursorState,
+  createViewportState,
+  updateViewport,
+} from './cursor';
 import { drawGridBuffered, getTerminalSize } from './draw';
 import { cleanupKeyboardInput, setupKeyboardInput } from './input';
 import { createLogger } from './log';
@@ -46,6 +50,7 @@ async function startLiveDrawing(): Promise<void> {
 
   const username = argv.username;
   const cursor = createCursorState();
+  const viewport = createViewportState();
   const terminalSize = getTerminalSize();
   const pixelWriter = new PixelWriter(logger);
 
@@ -65,6 +70,7 @@ async function startLiveDrawing(): Promise<void> {
           cursor,
           username,
           currentBuffer,
+          viewport,
         );
       },
       logger.error.bind(logger),
@@ -75,13 +81,15 @@ async function startLiveDrawing(): Promise<void> {
 
     setupKeyboardInput(
       cursor,
-      terminalSize,
       () => {
+        // Update viewport based on cursor position
+        updateViewport(viewport, cursor, terminalSize);
         currentBuffer = drawGridBuffered(
           state,
           cursor,
           username,
           currentBuffer,
+          viewport,
         );
       },
       async (row: number, col: number) => {
@@ -97,13 +105,20 @@ async function startLiveDrawing(): Promise<void> {
           cursor,
           username,
           currentBuffer,
+          viewport,
         );
       },
       () => state,
     );
 
     // Initial draw
-    currentBuffer = drawGridBuffered(state, cursor, username, currentBuffer);
+    currentBuffer = drawGridBuffered(
+      state,
+      cursor,
+      username,
+      currentBuffer,
+      viewport,
+    );
     logger.log('Initial state drawn, listening for updates...');
 
     // Handle shutdown
