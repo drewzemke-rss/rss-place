@@ -18,7 +18,7 @@ export function moveCursor(
   terminalSize: { rows: number; cols: number },
 ): void {
   // Reserve bottom line for diagnostics - cursor can only move in drawable area
-  const maxRow = terminalSize.rows - 2;
+  const maxRow = 2 * terminalSize.rows - 3;
 
   switch (direction) {
     case 'up':
