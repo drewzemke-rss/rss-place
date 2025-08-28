@@ -80,3 +80,15 @@ export function setColorFromMap(cursor: CursorState, mapState: MapState): void {
     cursor.color = { r: 0, g: 0, b: 0 };
   }
 }
+
+export function brightenColor(cursor: CursorState): void {
+  cursor.color.r = Math.min(255, cursor.color.r + 1);
+  cursor.color.g = Math.min(255, cursor.color.g + 1);
+  cursor.color.b = Math.min(255, cursor.color.b + 1);
+}
+
+export function darkenColor(cursor: CursorState): void {
+  cursor.color.r = Math.max(0, cursor.color.r - 1);
+  cursor.color.g = Math.max(0, cursor.color.g - 1);
+  cursor.color.b = Math.max(0, cursor.color.b - 1);
+}

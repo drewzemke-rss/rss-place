@@ -1,8 +1,10 @@
 import { stdin } from 'node:process';
 import ansiEscapes from 'ansi-escapes';
 import {
+  brightenColor,
   type CursorState,
   cycleColor,
+  darkenColor,
   moveCursor,
   setColorFromMap,
   setColorPreset,
@@ -60,11 +62,17 @@ export function setupKeyboardInput(
     } else if (key === 'B') {
       cycleColor(cursor, 'b', 64);
       onColorChange?.();
-    } else if (key === 'w') {
+    } else if (key === 'W') {
       setColorPreset(cursor, 'white');
       onColorChange?.();
-    } else if (key === 'c') {
+    } else if (key === 'C') {
       setColorPreset(cursor, 'black');
+      onColorChange?.();
+    } else if (key === 'w') {
+      brightenColor(cursor);
+      onColorChange?.();
+    } else if (key === 'c') {
+      darkenColor(cursor);
       onColorChange?.();
     } else if (key === 'x') {
       setColorPreset(cursor, 'random');

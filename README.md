@@ -29,8 +29,10 @@ pnpm start --username <your-name>
 - `Enter` or `Space` - Draw a pixel at cursor position
 - `r/g/b` - Cycle red/green/blue component by +1 (0→1→2...→255→0)
 - `R/G/B` - Cycle red/green/blue component by +64 (0→64→128→192→255→63→127...)
-- `w` - Set color to white
-- `c` - Set color to black
+- `W` - Set color to white
+- `C` - Set color to black
+- `w` - Brighten color (increase all RGB values by 1)
+- `c` - Darken color (decrease all RGB values by 1)
 - `x` - Set color to a random RGB value
 - `p` - Eye dropper tool: set current color to the pixel color under cursor 
 - `Ctrl+C` - Exit the application
