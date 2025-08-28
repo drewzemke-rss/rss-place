@@ -36,7 +36,7 @@ export function setupKeyboardInput(
     } else if (key === '\u001b[D') {
       moveCursor(cursor, 'left', terminalSize);
       onCursorMove();
-    } else if (key === '\r') {
+    } else if (key === '\r' || key === ' ') {
       onDrawPixel(cursor.row, cursor.col);
     } else if (key === 'r') {
       cycleColor(cursor, 'r', 1);
