@@ -28,16 +28,16 @@ export function setupKeyboardInput(
       return;
     }
 
-    if (key === '\u001b[A') {
+    if (key === '\u001b[A' || key === 'k') {
       moveCursor(cursor, 'up', terminalSize);
       onCursorMove();
-    } else if (key === '\u001b[B') {
+    } else if (key === '\u001b[B' || key === 'j') {
       moveCursor(cursor, 'down', terminalSize);
       onCursorMove();
-    } else if (key === '\u001b[C') {
+    } else if (key === '\u001b[C' || key === 'l') {
       moveCursor(cursor, 'right', terminalSize);
       onCursorMove();
-    } else if (key === '\u001b[D') {
+    } else if (key === '\u001b[D' || key === 'h') {
       moveCursor(cursor, 'left', terminalSize);
       onCursorMove();
     } else if (key === '\r' || key === ' ') {
@@ -63,7 +63,7 @@ export function setupKeyboardInput(
     } else if (key === 'w') {
       setColorPreset(cursor, 'white');
       onColorChange?.();
-    } else if (key === 'k') {
+    } else if (key === 'c') {
       setColorPreset(cursor, 'black');
       onColorChange?.();
     } else if (key === 'x') {

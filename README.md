@@ -25,14 +25,14 @@ pnpm start --username <your-name>
 
 ### Keyboard Controls
 
-- `Arrow Keys` - Move cursor around the canvas
+- `Arrow Keys` / `hjkl` - Move cursor around the canvas
 - `Enter` or `Space` - Draw a pixel at cursor position
 - `r/g/b` - Cycle red/green/blue component by +1 (0→1→2...→255→0)
 - `R/G/B` - Cycle red/green/blue component by +64 (0→64→128→192→255→63→127...)
 - `w` - Set color to white
-- `k` - Set color to black
+- `c` - Set color to black
 - `x` - Set color to a random RGB value
-- `p` - Eye dropper tool: set current color to the pixel color under cursor (falls back to black if no data)
+- `p` - Eye dropper tool: set current color to the pixel color under cursor 
 - `Ctrl+C` - Exit the application
 
 The bottom line shows your username, cursor coordinates, and current color with a color swatch.
