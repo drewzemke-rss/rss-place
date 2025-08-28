@@ -1,3 +1,5 @@
+import type { MapState } from './state';
+
 export interface CursorState {
   row: number;
   col: number;
@@ -64,5 +66,17 @@ export function setColorPreset(
         b: Math.floor(Math.random() * 256),
       };
       break;
+  }
+}
+
+export function setColorFromMap(cursor: CursorState, mapState: MapState): void {
+  const key = `${cursor.row},${cursor.col}`;
+  const pixelData = mapState.get(key);
+
+  if (pixelData) {
+    cursor.color = { ...pixelData.color };
+  } else {
+    // Fallback to black if there's no data
+    cursor.color = { r: 0, g: 0, b: 0 };
   }
 }

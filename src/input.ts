@@ -4,8 +4,10 @@ import {
   type CursorState,
   cycleColor,
   moveCursor,
+  setColorFromMap,
   setColorPreset,
 } from './cursor';
+import type { MapState } from './state';
 
 export function setupKeyboardInput(
   cursor: CursorState,
@@ -13,6 +15,7 @@ export function setupKeyboardInput(
   onCursorMove: () => void,
   onDrawPixel: (row: number, col: number) => void,
   onColorChange?: () => void,
+  getMapState?: () => MapState,
 ): void {
   stdin.setRawMode(true);
   stdin.resume();
@@ -66,6 +69,11 @@ export function setupKeyboardInput(
     } else if (key === 'x') {
       setColorPreset(cursor, 'random');
       onColorChange?.();
+    } else if (key === 'p') {
+      if (getMapState) {
+        setColorFromMap(cursor, getMapState());
+        onColorChange?.();
+      }
     }
   });
 }

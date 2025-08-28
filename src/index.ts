@@ -80,14 +80,12 @@ async function startLiveDrawing(): Promise<void> {
       () => {
         drawGrid(state, cursor, username);
       },
+      () => state,
     );
 
     // Initial draw
     drawGrid(state, cursor, username);
     logger.log('Initial state drawn, listening for updates...');
-    logger.log(
-      'Use arrow keys to move cursor, Enter to draw pixel, Ctrl+C to exit',
-    );
 
     // Handle shutdown
     const shutdown = async (): Promise<void> => {
