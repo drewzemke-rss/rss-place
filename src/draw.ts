@@ -1,6 +1,14 @@
 import ansiEscapes from 'ansi-escapes';
 import type { CursorState } from './cursor';
-import { loadMapState, type MapState } from './state';
+import {
+  type Color,
+  loadMapState,
+  type MapState,
+  type PixelData,
+} from './state';
+
+const WHITE: Color = { r: 255, g: 255, b: 255 };
+const BLACK: Color = { r: 0, g: 0, b: 0 };
 
 function getTerminalSize(): { rows: number; cols: number } {
   return {
@@ -9,7 +17,39 @@ function getTerminalSize(): { rows: number; cols: number } {
   };
 }
 
-const BLACK_PIXEL = { r: 0, g: 0, b: 0 };
+function buildColoredHalfBlock(
+  foregroundColor: Color,
+  backgroundColor: Color,
+): string {
+  return `\u001b[38;2;${foregroundColor.r};${foregroundColor.g};${foregroundColor.b}m\u001b[48;2;${backgroundColor.r};${backgroundColor.g};${backgroundColor.b}m▀`;
+}
+
+function renderPixelPair(
+  topPixel: PixelData | undefined,
+  bottomPixel: PixelData | undefined,
+): string {
+  // fallback to black if no color data is available
+  const topColor = topPixel?.color ?? BLACK;
+  const bottomColor = bottomPixel?.color ?? BLACK;
+
+  return buildColoredHalfBlock(topColor, bottomColor);
+}
+
+function renderCursorPixelPair(
+  topPixel: PixelData | undefined,
+  bottomPixel: PixelData | undefined,
+  isTopHalf: boolean,
+): string {
+  if (isTopHalf) {
+    // white foreground, preserve bottom half as background
+    const bottomColor = bottomPixel?.color ?? BLACK;
+    return buildColoredHalfBlock(WHITE, bottomColor);
+  } else {
+    // white background, preserve top half as foreground
+    const topColor = topPixel?.color ?? BLACK;
+    return buildColoredHalfBlock(topColor, WHITE);
+  }
+}
 
 function drawGrid(
   state?: MapState,
@@ -35,18 +75,11 @@ function drawGrid(
       const bottomPixel = mapState.get(bottomCoords);
 
       process.stdout.write(ansiEscapes.cursorTo(col, row));
-
-      // fallback to black if no color data is available
-      const { r: tr, g: tg, b: tb } = topPixel?.color ?? BLACK_PIXEL;
-      const { r: br, g: bg, b: bb } = bottomPixel?.color ?? BLACK_PIXEL;
-
-      const output = `\u001b[38;2;${tr};${tg};${tb}m\u001b[48;2;${br};${bg};${bb}m▀`;
-
-      process.stdout.write(output);
+      process.stdout.write(renderPixelPair(topPixel, bottomPixel));
     }
   }
 
-  // Draw cursor after the main grid
+  // draw cursor
   if (cursor) {
     const terminalRow = Math.floor(cursor.row / 2);
     const terminalCol = cursor.col;
@@ -59,20 +92,9 @@ function drawGrid(
     const bottomPixel = mapState.get(bottomCoords);
 
     process.stdout.write(ansiEscapes.cursorTo(terminalCol, terminalRow));
-
-    if (isTopHalf) {
-      // white foreground, preserve bottom half as background
-      const { r, g, b } = bottomPixel?.color ?? BLACK_PIXEL;
-      process.stdout.write(
-        `\u001b[38;2;255;255;255m\u001b[48;2;${r};${g};${b}m▀`,
-      );
-    } else {
-      // white background, preserve top half as foreground
-      const { r, g, b } = topPixel?.color ?? BLACK_PIXEL;
-      process.stdout.write(
-        `\u001b[38;2;${r};${g};${b}m\u001b[48;2;255;255;255m▀`,
-      );
-    }
+    process.stdout.write(
+      renderCursorPixelPair(topPixel, bottomPixel, isTopHalf),
+    );
   }
 
   // write diagnostic info on the bottom line

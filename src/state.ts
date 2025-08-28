@@ -4,10 +4,11 @@ import type { PlaceMessage } from './schema';
 
 const STATE_FILE = 'state.json';
 
-export type MapState = Map<
-  string,
-  { user: string; color: { r: number; g: number; b: number } }
->;
+export type Color = { r: number; g: number; b: number };
+
+export type PixelData = { user: string; color: Color };
+
+export type MapState = Map<string, PixelData>;
 
 export function coordsToKey(row: number, col: number): string {
   return `${row},${col}`;
