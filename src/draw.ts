@@ -59,8 +59,7 @@ function drawGrid(
   const mapState = state || loadMapState();
   const { rows, cols } = getTerminalSize();
 
-  process.stdout.write(ansiEscapes.clearScreen);
-  process.stdout.write(ansiEscapes.cursorHide);
+  // process.stdout.write(ansiEscapes.clearScreen);
 
   // only draw to second-to-last row, reserving bottom line for diagnostics
   const drawableRows = rows - 1;
@@ -97,11 +96,12 @@ function drawGrid(
     );
   }
 
+  // reset colors
+  process.stdout.write('\u001b[0m');
+
   // write diagnostic info on the bottom line
   process.stdout.write(ansiEscapes.cursorTo(0, rows - 1));
-
-  // reset colors before diagnostics
-  process.stdout.write('\u001b[0m');
+  process.stdout.write(ansiEscapes.eraseEndLine);
 
   if (username && cursor) {
     const { r, g, b } = cursor.color;

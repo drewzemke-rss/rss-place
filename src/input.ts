@@ -17,6 +17,7 @@ export function setupKeyboardInput(
   stdin.setRawMode(true);
   stdin.resume();
   stdin.setEncoding('utf8');
+  process.stdout.write(ansiEscapes.cursorHide);
 
   stdin.on('data', (key: string) => {
     if (key === '\u0003') {
